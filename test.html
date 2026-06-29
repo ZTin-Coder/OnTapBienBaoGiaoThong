@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Biển Báo Giao Thông</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .sign-container svg { width: 200px; height: 200px; margin: 0 auto; }
+        .option-btn { transition: all 0.2s ease; }
+        .option-btn:active { transform: scale(0.98); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold">Học Biển Báo</h1>
+            <p class="text-blue-100 text-sm mt-1">Chọn đáp án đúng cho biển báo dưới đây</p>
+        </div>
+
+        <div class="px-6 py-4 flex justify-between items-center border-b border-gray-100">
+            <div class="text-gray-600 font-semibold">
+                Câu: <span id="current-index">1</span>/<span id="total-questions">0</span>
+            </div>
+            <div class="text-blue-600 font-bold">
+                Điểm: <span id="score">0</span>
+            </div>
+        </div>
+
+        <div class="p-8">
+            <div id="sign-image" class="sign-container flex justify-center mb-8"></div>
+            <div id="options" class="grid grid-cols-1 gap-3"></div>
+        </div>
+
+        <div id="feedback" class="hidden px-6 py-4 text-center border-t border-gray-100 bg-gray-50">
+            <p id="feedback-text" class="font-bold mb-3"></p>
+            <button onclick="nextQuestion()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-semibold transition">Tiếp theo</button>
+        </div>
+
+        <div id="result-screen" class="hidden p-8 text-center">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-2xl font-bold mb-2">Hoàn thành!</h2>
+            <p class="text-gray-600 mb-6 text-lg">Bạn đạt được <span id="final-score" class="font-bold text-blue-600">0</span>/<span id="final-total">0</span> câu.</p>
+            <button onclick="restartGame()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg">Chơi lại lần nữa</button>
+        </div>
+    </div>
+
+    <script>
+        const signs = [
+            {
+                name: "Dừng lại",
+                svg: `<svg viewBox="0 0 100 100"><path d="M30,5 L70,5 L95,30 L95,70 L70,95 L30,95 L5,70 L5,30 Z" fill="#ff0000" stroke="#ffffff" stroke-width="2"/><text x="50" y="60" text-anchor="middle" fill="white" style="font: bold 22px Arial;">STOP</text></svg>`,
+                options: ["Dừng lại", "Cấm đi thẳng", "Đường ưu tiên", "Trạm thu phí"]
+            },
+            {
+                name: "Cấm đi ngược chiều",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ff0000"/><rect x="15" y="42" width="70" height="16" fill="white"/></svg>`,
+                options: ["Cấm đỗ xe", "Cấm đi ngược chiều", "Đường một chiều", "Hết đường cấm"]
+            },
+            {
+                name: "Cấm dừng và đỗ xe",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc" stroke="#ff0000" stroke-width="8"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/><line x1="82" y1="18" x2="18" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm quay đầu", "Cấm đỗ xe", "Cấm dừng và đỗ xe", "Khu vực đỗ xe"]
+            },
+            {
+                name: "Đường người đi bộ cắt ngang",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#000000" stroke-width="2"/><rect x="35" y="70" width="30" height="5" fill="black"/><path d="M50,45 A5,5 0 1,1 50,55 A5,5 0 1,1 50,45 M45,55 L55,55 L55,70 L45,70 Z" fill="black"/></svg>`,
+                options: ["Trẻ em", "Đường người đi bộ cắt ngang", "Công trường", "Đường trơn trượt"]
+            },
+            {
+                name: "Hạn chế tốc độ tối đa 50km/h",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><text x="50" y="65" text-anchor="middle" fill="black" style="font: bold 35px Arial;">50</text></svg>`,
+                options: ["Tốc độ tối thiểu 50", "Khoảng cách 50m", "Hạn chế tốc độ tối đa 50km/h", "Hết hạn chế 50"]
+            },
+            {
+                name: "Hướng đi phải theo",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc"/><path d="M30,50 L70,50 M60,35 L75,50 L60,65" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/></svg>`,
+                options: ["Cấm rẽ phải", "Hướng đi phải theo", "Đường một chiều", "Ngã rẽ nguy hiểm"]
+            },
+            {
+                name: "Giao nhau với đường ưu tiên",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,10 L95,10 L50,90 Z" fill="white" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Đường ưu tiên", "Giao nhau với đường ưu tiên", "Giao nhau cùng cấp", "Cấm đi thẳng"]
+            },
+            {
+                name: "Bệnh viện",
+                svg: `<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#0033cc"/><rect x="25" y="25" width="50" height="50" fill="white"/><rect x="44" y="32" width="12" height="36" fill="red"/><rect x="32" y="44" width="36" height="12" fill="red"/></svg>`,
+                options: ["Nhà thuốc", "Nơi cấp cứu", "Bệnh viện", "Trạm y tế"]
+            },
+            {
+                name: "Cấm xe đạp",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><path d="M35,65 A8,8 0 1,1 35,65.1 M65,65 A8,8 0 1,1 65,65.1" stroke="black" stroke-width="2" fill="none"/><path d="M35,65 L50,50 L65,65 M50,50 L50,40 L60,40" stroke="black" stroke-width="2" fill="none"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Đường xe đạp", "Cấm xe đạp", "Bãi đỗ xe đạp", "Xe thô sơ"]
+            },
+            {
+                name: "Cấm bóp còi",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><path d="M30,55 L45,55 L60,70 L60,30 L45,45 L30,45 Z" fill="black"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Hết cấm còi", "Cấm bóp còi", "Trạm kiểm soát", "Khu dân cư"]
+            },
+            {
+                name: "Cấm rẽ trái",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><path d="M70,50 L40,50 M40,50 L40,65 M40,50 L55,35" stroke="black" stroke-width="8" fill="none" stroke-linejoin="round"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm rẽ trái", "Cấm quay đầu", "Hướng đi bên trái", "Cấm rẽ phải"]
+            },
+            {
+                name: "Giao nhau có tín hiệu đèn",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><circle cx="50" cy="40" r="6" fill="red"/><circle cx="50" cy="58" r="6" fill="#ffcc00"/><circle cx="50" cy="76" r="6" fill="green"/></svg>`,
+                options: ["Giao nhau có tín hiệu đèn", "Trạm thu phí", "Khu dân cư", "Công trường"]
+            },
+            {
+                name: "Cấm quay đầu xe",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><path d="M40,70 L40,40 A15,15 0 0,1 70,40 L70,55 M70,55 L60,45 M70,55 L80,45" stroke="black" stroke-width="6" fill="none"/><line x1="18" y1="82" x2="82" y2="18" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm rẽ trái", "Cấm quay đầu xe", "Đường vòng", "Cấm lùi xe"]
+            },
+            {
+                name: "Đường hai chiều",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M35,40 L35,75 M35,40 L25,50 M35,40 L45,50" stroke="black" stroke-width="6" fill="none"/><path d="M65,75 L65,40 M65,75 L55,65 M65,75 L75,65" stroke="black" stroke-width="6" fill="none"/></svg>`,
+                options: ["Đường đôi", "Giao nhau cùng cấp", "Đường hai chiều", "Cấm đi ngược chiều"]
+            },
+            {
+                name: "Cấm đi thẳng",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><path d="M50,75 L50,25 M50,25 L35,40 M50,25 L65,40" stroke="black" stroke-width="8" fill="none"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm đi thẳng", "Đường một chiều", "Hướng đi phải theo", "Cấm vượt"]
+            },
+            {
+                name: "Tốc độ tối thiểu cho phép (30km/h)",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc"/><text x="50" y="65" text-anchor="middle" fill="white" style="font: bold 35px Arial;">30</text></svg>`,
+                options: ["Tốc độ tối đa 30", "Tốc độ tối thiểu cho phép (30km/h)", "Khoảng cách 30m", "Biển báo số 30"]
+            },
+            {
+                name: "Trẻ em",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><circle cx="40" cy="45" r="5" fill="black"/><path d="M40,50 L40,75 L30,85 M40,75 L50,85 M30,60 L50,60" stroke="black" stroke-width="4" fill="none"/><circle cx="65" cy="55" r="4" fill="black"/><path d="M65,59 L65,75 L58,82 M65,75 L72,82 M58,65 L72,65" stroke="black" stroke-width="3" fill="none"/></svg>`,
+                options: ["Trường học", "Trẻ em", "Người đi bộ", "Công viên"]
+            },
+            {
+                name: "Chỗ ngoặt nguy hiểm vòng bên phải",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M40,80 L40,55 A15,15 0 0,1 70,40 M70,40 L60,30 M70,40 L80,30" stroke="black" stroke-width="6" fill="none"/></svg>`,
+                options: ["Cấm rẽ phải", "Đường vòng sang trái", "Chỗ ngoặt nguy hiểm vòng bên phải", "Đường gấp khúc"]
+            },
+            {
+                name: "Cấm vượt",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><rect x="25" y="40" width="20" height="30" fill="red" rx="3"/><rect x="55" y="40" width="20" height="30" fill="black" rx="3"/><line x1="18" y1="82" x2="82" y2="18" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm đỗ xe", "Cấm ô tô", "Cấm vượt", "Nhường đường"]
+            },
+            {
+                name: "Nơi đỗ xe",
+                svg: `<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#0033cc" rx="5"/><text x="50" y="70" text-anchor="middle" fill="white" style="font: bold 60px Arial;">P</text></svg>`,
+                options: ["Cấm đỗ xe", "Nơi đỗ xe", "Biển báo P", "Trạm xăng"]
+            }
+            , // Nhớ thêm dấu phẩy ở cuối câu "Nơi đỗ xe" trước khi dán đoạn này vào nhé
+            {
+                name: "Đường một chiều",
+                svg: `<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#0033cc" rx="5"/><path d="M50,80 L50,30 M50,30 L35,45 M50,30 L65,45" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+                options: ["Đường hai chiều", "Đường một chiều", "Hướng đi phải theo", "Đường ưu tiên"]
+            },
+            {
+                name: "Cấm người đi bộ",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><circle cx="50" cy="35" r="6" fill="black"/><path d="M50,41 L50,65 L40,80 M50,65 L60,80 M40,50 L60,50" stroke="black" stroke-width="5" fill="none"/><line x1="18" y1="82" x2="82" y2="18" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Đường người đi bộ", "Trẻ em", "Cấm người đi bộ", "Công trường"]
+            },
+            {
+                name: "Đường hẹp hai bên",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M35,80 L35,60 L45,40 L45,30 M65,80 L65,60 L55,40 L55,30" stroke="black" stroke-width="6" fill="none"/></svg>`,
+                options: ["Đường trơn", "Đường hẹp hai bên", "Công trường", "Vách núi nguy hiểm"]
+            },
+            {
+                name: "Giao nhau với đường không ưu tiên",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><rect x="44" y="35" width="12" height="45" fill="black"/><rect x="30" y="50" width="40" height="12" fill="black"/></svg>`,
+                options: ["Giao nhau cùng cấp", "Giao nhau với đường ưu tiên", "Giao nhau với đường không ưu tiên", "Đường cụt"]
+            },
+            {
+                name: "Đường cụt",
+                svg: `<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#0033cc" rx="5"/><rect x="42" y="40" width="16" height="40" fill="white"/><rect x="35" y="25" width="30" height="15" fill="#ff0000"/></svg>`,
+                options: ["Cấm đi thẳng", "Đường cụt", "Trạm thu phí", "Hết đường ưu tiên"]
+            },
+            {
+                name: "Chỗ ngoặt nguy hiểm vòng bên trái",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M60,80 L60,55 A15,15 0 0,0 30,40 M30,40 L40,30 M30,40 L20,30" stroke="black" stroke-width="6" fill="none"/></svg>`,
+                options: ["Chỗ ngoặt nguy hiểm vòng bên trái", "Cấm rẽ trái", "Đường vòng sang phải", "Gió ngang"]
+            },
+            {
+                name: "Cấm đỗ xe ngày lẻ",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc" stroke="#ff0000" stroke-width="8"/><rect x="45" y="25" width="10" height="50" fill="white"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm đỗ xe", "Cấm dừng và đỗ xe", "Cấm đỗ xe ngày lẻ", "Cấm đỗ xe ngày chẵn"]
+            },
+            {
+                name: "Cấm đỗ xe ngày chẵn",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc" stroke="#ff0000" stroke-width="8"/><rect x="35" y="25" width="10" height="50" fill="white"/><rect x="55" y="25" width="10" height="50" fill="white"/><line x1="18" y1="18" x2="82" y2="82" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Đường hai chiều", "Cấm đỗ xe ngày lẻ", "Cấm dừng xe", "Cấm đỗ xe ngày chẵn"]
+            },
+            {
+                name: "Khoảng cách tối thiểu giữa hai xe (8m)",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><text x="50" y="65" text-anchor="middle" fill="black" style="font: bold 40px Arial;">8m</text></svg>`,
+                options: ["Hạn chế chiều cao 8m", "Khoảng cách tối thiểu giữa hai xe (8m)", "Đường hẹp 8m", "Cấm xe dài trên 8m"]
+            },
+            {
+                name: "Hướng đi vòng sang trái",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#0033cc"/><path d="M70,20 L30,70 M30,50 L30,70 L50,70" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+                options: ["Hướng đi vòng sang trái", "Cấm rẽ trái", "Đường giao nhau", "Chỗ quay xe"]
+            },
+            {
+                name: "Cấm xe tải",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><rect x="25" y="45" width="30" height="20" fill="black" rx="2"/><rect x="58" y="50" width="15" height="15" fill="black" rx="2"/><circle cx="35" cy="70" r="6" fill="black"/><circle cx="65" cy="70" r="6" fill="black"/><line x1="18" y1="82" x2="82" y2="18" stroke="#ff0000" stroke-width="8"/></svg>`,
+                options: ["Cấm xe buýt", "Cấm xe tải", "Cấm ô tô", "Đường dành cho xe tải"]
+            },
+            {
+                name: "Hạn chế trọng lượng xe (10 tấn)",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><text x="50" y="65" text-anchor="middle" fill="black" style="font: bold 35px Arial;">10t</text></svg>`,
+                options: ["Tốc độ tối thiểu 10km/h", "Hạn chế trọng lượng xe (10 tấn)", "Khoảng cách xe 10m", "Cấm xe trên 10 chỗ"]
+            },
+            {
+                name: "Hạn chế chiều cao (4.25m)",
+                svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#ff0000" stroke-width="8"/><text x="50" y="58" text-anchor="middle" fill="black" style="font: bold 20px Arial;">4.25m</text><polygon points="50,15 40,30 60,30" fill="black"/><polygon points="50,85 40,70 60,70" fill="black"/></svg>`,
+                options: ["Hạn chế chiều ngang", "Cấm xe dài quá 4.25m", "Khoảng cách an toàn 4.25m", "Hạn chế chiều cao (4.25m)"]
+            },
+            {
+                name: "Đường hẹp bên trái",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M65,80 L65,40 M65,40 L65,30" stroke="black" stroke-width="8" fill="none"/><path d="M35,80 L35,60 M35,60 L45,40 L45,30" stroke="black" stroke-width="8" fill="none"/></svg>`,
+                options: ["Đường hẹp bên trái", "Đường hẹp bên phải", "Đường hẹp hai bên", "Chướng ngại vật bên trái"]
+            },
+            {
+                name: "Đường hẹp bên phải",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M35,80 L35,40 M35,40 L35,30" stroke="black" stroke-width="8" fill="none"/><path d="M65,80 L65,60 M65,60 L55,40 L55,30" stroke="black" stroke-width="8" fill="none"/></svg>`,
+                options: ["Chướng ngại vật bên phải", "Đường hẹp hai bên", "Đường hẹp bên phải", "Đường hẹp bên trái"]
+            },
+            {
+                name: "Giao nhau với đường nhánh bên phải",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M50,30 L50,80" stroke="black" stroke-width="10" fill="none"/><path d="M50,55 L70,55" stroke="black" stroke-width="8" fill="none"/></svg>`,
+                options: ["Đường ưu tiên", "Giao nhau với đường nhánh bên trái", "Giao nhau với đường nhánh bên phải", "Cấm rẽ phải"]
+            },
+            {
+                name: "Giao nhau với đường nhánh bên trái",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><path d="M50,30 L50,80" stroke="black" stroke-width="10" fill="none"/><path d="M50,55 L30,55" stroke="black" stroke-width="8" fill="none"/></svg>`,
+                options: ["Giao nhau với đường nhánh bên trái", "Giao nhau với đường nhánh bên phải", "Cấm rẽ trái", "Đường đôi"]
+            },
+            {
+                name: "Cửa hàng ăn uống",
+                svg: `<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#0033cc" rx="5"/><rect x="25" y="25" width="50" height="50" fill="white"/><path d="M40,35 L40,45 M43,35 L43,45 M46,35 L46,45 M40,45 A3,3 0 0,0 46,45 M43,45 L43,65" stroke="black" stroke-width="2" fill="none"/><path d="M56,35 A4,6 0 0,0 56,47 L56,65" stroke="black" stroke-width="3" fill="none"/></svg>`,
+                options: ["Nơi nghỉ ngơi", "Cửa hàng ăn uống", "Trạm dừng chân", "Khu cắm trại"]
+            },
+            {
+                name: "Dốc lên nguy hiểm",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><polygon points="25,70 75,70 75,40" fill="black"/><text x="60" y="65" text-anchor="middle" fill="white" style="font: bold 14px Arial;">10%</text></svg>`,
+                options: ["Dốc xuống nguy hiểm", "Dốc lên nguy hiểm", "Đường gập ghềnh", "Chú ý núi lở"]
+            },
+            {
+                name: "Dốc xuống nguy hiểm",
+                svg: `<svg viewBox="0 0 100 100"><path d="M5,90 L50,10 L95,90 Z" fill="#ffff00" stroke="#ff0000" stroke-width="8"/><polygon points="25,40 25,70 75,70" fill="black"/><text x="40" y="65" text-anchor="middle" fill="white" style="font: bold 14px Arial;">10%</text></svg>`,
+                options: ["Dốc lên nguy hiểm", "Đường trơn trượt", "Chú ý sỏi đá", "Dốc xuống nguy hiểm"]
+            }
+            
+        ];
+
+        let currentIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+
+        function shuffleArray(array) { return array.sort(() => Math.random() - 0.5); }
+
+        function initGame() {
+            shuffledQuestions = shuffleArray([...signs]);
+            document.getElementById('total-questions').innerText = shuffledQuestions.length;
+            currentIndex = 0;
+            score = 0;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const current = shuffledQuestions[currentIndex];
+            document.getElementById('current-index').innerText = currentIndex + 1;
+            document.getElementById('score').innerText = score;
+            document.getElementById('sign-image').innerHTML = current.svg;
+            
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+            
+            const shuffledOptions = shuffleArray([...current.options]);
+            const labels = ['A', 'B', 'C', 'D'];
+
+            shuffledOptions.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 rounded-xl border-2 border-gray-100 hover:border-blue-400 hover:bg-blue-50 font-medium flex items-center gap-4 transition-colors duration-200";
+                btn.innerHTML = `<span class="bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">${labels[i]}</span> <span>${opt}</span>`;
+                btn.onclick = () => checkAnswer(opt, current.name, btn);
+                optionsContainer.appendChild(btn);
+            });
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('options').style.pointerEvents = 'auto';
+        }
+
+        function checkAnswer(selected, correct, clickedBtn) {
+            const feedback = document.getElementById('feedback');
+            const feedbackText = document.getElementById('feedback-text');
+            document.getElementById('options').style.pointerEvents = 'none';
+            clickedBtn.classList.remove('hover:border-blue-400', 'hover:bg-blue-50');
+
+            if (selected === correct) {
+                score++;
+                feedbackText.innerText = "Chính xác! 🎉";
+                feedbackText.className = "text-green-600 font-bold mb-3 text-lg";
+                clickedBtn.classList.add('bg-green-50', 'border-green-500', 'text-green-700');
+            } else {
+                feedbackText.innerText = "Sai rồi! Đáp án đúng là: " + correct;
+                feedbackText.className = "text-red-500 font-bold mb-3 text-lg";
+                clickedBtn.classList.add('bg-red-50', 'border-red-500', 'text-red-700');
+            }
+            feedback.classList.remove('hidden');
+            document.getElementById('score').innerText = score;
+        }
+
+        function nextQuestion() {
+            currentIndex++;
+            if (currentIndex < shuffledQuestions.length) { showQuestion(); } 
+            else { showResult(); }
+        }
+
+        function showResult() {
+            document.getElementById('sign-image').parentElement.classList.add('hidden');
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-total').innerText = shuffledQuestions.length;
+        }
+
+        function restartGame() {
+            document.getElementById('sign-image').parentElement.classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
